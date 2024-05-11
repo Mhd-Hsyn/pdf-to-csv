@@ -79,7 +79,6 @@ def process_data_frame(df):
             if "%" in text:
                 split_text = [part.strip() for part in text.split("%") if part.strip()]
                 if len(split_text) > 1:
-                    print("split_text ", split_text)
                     df.at[index, 'CDF Score']= split_text[0].strip()+"%"
                     df.at[index, 'No Feedack']= split_text[1].strip()
 
