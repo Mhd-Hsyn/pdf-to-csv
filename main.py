@@ -122,9 +122,7 @@ async def process_pdf(file: UploadFile = File(...)):
         processed_df = process_csv(combined_df)
         # Remove spaces from column names
         processed_df.rename(columns=lambda x: x.lower().replace(' ', '_'), inplace=True)
-
         more_processed_df = process_data_frame(processed_df)
-        # more_processed_df.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
         json_data = more_processed_df.to_dict(orient='records')
         
         return {"filename": file.filename, "data": json_data}
