@@ -1,3 +1,10 @@
+"""
+library is camlot 
+
+pip install camelot-py[cv]
+
+"""
+
 import uvicorn
 from fastapi import FastAPI, File, UploadFile
 import camelot, os
