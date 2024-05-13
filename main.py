@@ -48,50 +48,50 @@ def process_data_frame(df):
     # Iterate over each row in the DataFrame
     for index, row in df.iterrows():
         # Check if the value in 'DA Name' column is NaN
-        if isinstance(row['DA Name'], str):
+        if isinstance(row['da_name'], str):
             # Check if any word from the tier_list is in the 'DA Name' column
             for tier in tier_list:
-                if tier in row['DA Name']:
-                    df.at[index, 'DA Name'] = row['DA Name'].replace(tier, "").strip()
+                if tier in row['da_name']:
+                    df.at[index, 'da_name'] = row['da_name'].replace(tier, "").strip()
                     # Split the 'DA Name' and assign the matched tier to 'DA Tier' column
-                    df.at[index, 'DA Tier'] = tier
+                    df.at[index, 'da_tier'] = tier
 
     for index, row in df.iterrows():
-        if isinstance(row['DA Tier'], str):
+        if isinstance(row['da_tier'], str):
             for tier in tier_list:
-                if tier in row['DA Tier']:
+                if tier in row['da_tier']:
                     # Split the text based on the tier name
-                    da_name, _, cdf_score = row['DA Tier'].partition(tier)
+                    da_name, _, cdf_score = row['da_tier'].partition(tier)
 
-                    df.at[index, 'DA Tier'] = tier
+                    df.at[index, 'da_tier'] = tier
                     
                     # Update DA Name only if data exists before tier
                     if da_name.strip():
-                        df.at[index, 'DA Name'] = da_name.strip()
+                        df.at[index, 'da_name'] = da_name.strip()
                     
                     # Update CDF Score only if data exists after tier
                     if cdf_score.strip():
-                        df.at[index, 'CDF Score'] = cdf_score.strip()
+                        df.at[index, 'cdf_score'] = cdf_score.strip()
 
     for index, row in df.iterrows():
-        if isinstance(row['CDF Score'], str):
-            text= row['CDF Score'].strip()
+        if isinstance(row['cdf_score'], str):
+            text= row['cdf_score'].strip()
             if "%" in text:
                 split_text = [part.strip() for part in text.split("%") if part.strip()]
                 if len(split_text) > 1:
-                    df.at[index, 'CDF Score']= split_text[0].strip()+"%"
-                    df.at[index, 'No Feedack']= split_text[1].strip()
+                    df.at[index, 'cdf_score']= split_text[0].strip()+"%"
+                    df.at[index, 'no_feedack']= split_text[1].strip()
 
             for tier in tier_list:
-                if tier in row['CDF Score']:
-                    df.at[index, 'DA Tier']= tier
-                    text= row['CDF Score'].strip()
+                if tier in row['cdf_score']:
+                    df.at[index, 'da_tier']= tier
+                    text= row['cdf_score'].strip()
                     text= text.replace(tier, "").strip()
                     if "%" in text:
                         split_text = [part.strip() for part in text.split("%") if part.strip()]
                         if len(split_text) > 1:
-                            df.at[index, 'CDF Score']= split_text[0].strip()+"%"
-                            df.at[index, 'No Feedack']= split_text[1].strip()
+                            df.at[index, 'cdf_score']= split_text[0].strip()+"%"
+                            df.at[index, 'no_feedack']= split_text[1].strip()
                             break
         
     return df
@@ -120,7 +120,11 @@ async def process_pdf(file: UploadFile = File(...)):
             dfs.append(table.df)
         combined_df = pd.concat(dfs, ignore_index=True)
         processed_df = process_csv(combined_df)
+        # Remove spaces from column names
+        processed_df.rename(columns=lambda x: x.lower().replace(' ', '_'), inplace=True)
+
         more_processed_df = process_data_frame(processed_df)
+        # more_processed_df.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
         json_data = more_processed_df.to_dict(orient='records')
         
         return {"filename": file.filename, "data": json_data}
