@@ -249,5 +249,82 @@ async def process_pdf_pod(file: UploadFile = File(...)):
 
 
 
+#################################################################################################
+
+
+def process_score_card(save_path):
+    abc = camelot.read_pdf(save_path, pages="all")  # Replace with your file location
+    # Initialize an empty dictionary to store DataFrames
+    table_dict = {}
+
+    # Iterate through each table extracted by Camelot
+    for index, table in enumerate(abc, start=1):
+        # Convert the table to a DataFrame
+        df = table.df
+        # # Use the second row as column names
+        df.columns = df.iloc[1]
+        # # # Skip the first row as it contains unnecessary data
+        df = df.iloc[2:]
+        # # Get the column names of the DataFrame
+        columns = tuple(df.columns)
+        
+        # Check if a DataFrame with the same columns already exists in the dictionary
+        if columns in table_dict:
+            # skip columns name 
+            df = df.iloc[1:]
+            # If it does, append the current DataFrame to the existing one
+            table_dict[columns] = pd.concat([table_dict[columns], df], ignore_index=True)
+        else:
+            # If it doesn't, create a new entry in the dictionary
+            table_dict[columns] = df
+
+    all_tables= {}
+
+    # Print or process the resulting DataFrames
+    for index, (columns, df) in enumerate(table_dict.items(), start=1):
+        if all(column == '' for column in columns) and all(column == '' for column in df.columns) and all(all(value == '' for value in row) for _, row in df.iterrows()):
+            continue  # Skip this DataFrame if both column names and data are empty
+
+        df.columns= [col.lower().replace(" ", "_").replace("/", "_").replace("-", "").replace("%","percent").replace("\n", "") for col in df.columns]
+
+        if index== 1:
+            all_tables['DA_Current_Week_Performance']= df.to_dict(orient='records')
+        
+        if index==2:
+            all_tables['DA_Trailing_Week_Performance']= df.to_dict(orient='records')
+
+        if index > 2:
+            all_tables[f'other_table_{index}']= df.to_dict(orient='records')
+
+    return all_tables
+
+
+
+@app.post("/upload-score-card/")
+async def process_pdf_scorecard(file: UploadFile = File(...)):
+    if file.filename.endswith('.pdf'):
+        # Define the directory to save the PDF files
+        save_directory = "pdfs"
+        os.makedirs(save_directory, exist_ok=True)  # Create the directory if it doesn't exist
+
+        # Specify the complete path to save the PDF file
+        save_path = os.path.join(save_directory, file.filename)
+
+        # Save the uploaded PDF file to the specified directory
+        with open(save_path, "wb") as buffer:
+            buffer.write(await file.read())
+
+        json_data= process_score_card(save_path)
+        
+        return {"status": True,"filename": file.filename, "data": json_data}
+    
+    return {'status': False, "message": "Uploaded file is not a PDF"}
+
+
+
+
+
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8009, reload=True)
