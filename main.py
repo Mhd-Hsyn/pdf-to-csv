@@ -9,6 +9,8 @@ import uvicorn
 from fastapi import FastAPI, File, UploadFile
 import camelot, os
 import pandas as pd
+import fitz  # PyMuPDF
+import re
 
 app = FastAPI()
 
@@ -299,6 +301,42 @@ def process_score_card(save_path):
     return all_tables
 
 
+# Extract All Text before rating
+def extract_text_from_pdf(pdf_path):
+    # Open the PDF file
+    document = fitz.open(pdf_path)
+    text = ""
+
+    # Iterate through each page
+    for page_num in range(len(document)):
+        page = document.load_page(page_num)
+        text += page.get_text()
+
+    return text
+
+
+def extract_ratings(text):
+    # Define patterns for the ratings
+    patterns = {
+        "Overall Standing": r"Overall Standing:\s+(\w+)",
+        "Safety and Compliance": r"Safety and Compliance:\s+(\w+)",
+        "Quality": r"Quality:\s+(\w+)",
+        "Team": r"Team:\s+(\w+)"
+    }
+    
+    # Dictionary to store the ratings
+    ratings = {}
+    
+    # Extract the ratings
+    for key, pattern in patterns.items():
+        match = re.search(pattern, text)
+        if match:
+            ratings[key] = match.group(1)
+        else:
+            ratings[key] = "Not Found"  # Default value if the pattern is not found
+    
+    return ratings
+
 
 @app.post("/upload-score-card/")
 async def process_pdf_scorecard(file: UploadFile = File(...)):
@@ -314,10 +352,13 @@ async def process_pdf_scorecard(file: UploadFile = File(...)):
         with open(save_path, "wb") as buffer:
             buffer.write(await file.read())
 
+        # Get all text for extract rating
+        pdf_text = extract_text_from_pdf(save_path)
+        ratings = extract_ratings(pdf_text)  # extract rating
+
         json_data= process_score_card(save_path)
-        
-        return {"status": True,"filename": file.filename, "data": json_data}
-    
+        return {"status": True,"filename": file.filename, "ratings": ratings, "data": json_data}
+
     return {'status': False, "message": "Uploaded file is not a PDF"}
 
 
