@@ -331,10 +331,13 @@ def extract_ratings(text):
     for key, pattern in patterns.items():
         match = re.search(pattern, text)
         if match:
+            key= key.replace(" ", "_").lower()
             ratings[key] = match.group(1)
         else:
+            key= key.replace(" ", "_").lower()
             ratings[key] = "Not Found"  # Default value if the pattern is not found
-    
+
+
     return ratings
 
 
