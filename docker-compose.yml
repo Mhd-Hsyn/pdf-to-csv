@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  pdf_to_csv:
+    build: .
+    ports:
+      - "8009:8009"
+    volumes:
+      - .:/pdf_to_csv
